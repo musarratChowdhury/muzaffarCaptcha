@@ -1,5 +1,7 @@
 let canvas = document.getElementById("captcha-canvas");
 let context = canvas.getContext("2d");
+const failedImg = document.getElementById("failedImg");
+const successImg = document.getElementById("successImg");
 const verifyButton = document.getElementById("verifyButton");
 const reinitialiseButton = document.getElementById("reinitialiseButton");
 
@@ -11,7 +13,7 @@ const CELL_WIDTH = CANVAS_WIDTH / NUM_CELLS;
 const CELL_HEIGHT = CANVAS_HEIGHT;
 
 let possibleObjects = ["car", "flower"];
-let userSelections = [];
+let userSelections = [-1, -1, -1, -1, -1];
 let objectMap = [];
 let currentCaptchaTestObject;
 let selectionCount = 0;
@@ -50,7 +52,7 @@ window.onload = () => {
 };
 
 function Initialise() {
-  userSelections = [];
+  userSelections = [-1, -1, -1, -1, -1];
   selectionCount = 0;
   failCount = 0;
   canvasLock = false;
@@ -73,7 +75,7 @@ function Initialise() {
 // necessary functions
 function showSuccessImage(context) {
   let successImage = {
-    src: "./assets/success.png",
+    srcImage: successImg,
     x: (NUM_CELLS * CELL_WIDTH) / 2 - CELL_WIDTH,
     y: CELL_HEIGHT / 4,
     w: CELL_WIDTH * 2,
@@ -83,7 +85,7 @@ function showSuccessImage(context) {
 }
 function showFailImage(context) {
   let failImage = {
-    src: "./assets/failed.png",
+    srcImage: failedImg,
     x: (NUM_CELLS * CELL_WIDTH) / 2 - CELL_WIDTH,
     y: CELL_HEIGHT / 4,
     w: CELL_WIDTH * 2,
@@ -93,7 +95,7 @@ function showFailImage(context) {
 }
 function rearrangeGrid() {
   objectMap = randomlyGenerateObjectMap(5, possibleObjects);
-  userSelections = [];
+  userSelections = [-1, -1, -1, -1, -1];
   clearCanvas(context);
   drawGrid(context);
   populateTheGridWithRandomObjects(objectMap);
@@ -117,10 +119,12 @@ function makeSelection(context, gridNo) {
 function verifySelections(objectMap, userSelections) {
   let success = true;
   userSelections.forEach((selectedGrid) => {
-    if (objectMap[selectedGrid] != currentCaptchaTestObject) {
-      success = false;
-    } else {
-      objectMap[selectedGrid] = "selected";
+    if (selectedGrid != -1) {
+      if (objectMap[selectedGrid] != currentCaptchaTestObject) {
+        success = false;
+      } else {
+        objectMap[selectedGrid] = "selected";
+      }
     }
   });
 
@@ -295,12 +299,28 @@ function whichGridCell(x, y) {
   return { j: gx, i: gy };
 }
 function detectUserSelection(evt) {
-  if (canvasLock || selectionCount > 4) return;
-  selectionCount++;
+  if (canvasLock) return;
   let pos = getMouseXY(evt);
   let gridCell = whichGridCell(pos.x, pos.y);
-  userSelections.push(gridCell.j);
-  makeSelection(context, gridCell.j);
+  if (userSelections.indexOf(gridCell.j) == -1) {
+    userSelections[gridCell.j] = gridCell.j;
+    makeSelection(context, gridCell.j);
+  } else {
+    userSelections[gridCell.j] = -1;
+    undoSelection(context, gridCell.j);
+  }
+}
+function undoSelection(context, gridNo) {
+  clearGrid(context, gridNo);
+  if (objectMap[gridNo] == "car") {
+    drawCar(context, gridNo);
+  } else {
+    drawFlower(context, gridNo);
+  }
+}
+function clearGrid(context, gridNo) {
+  context.clearRect(gridNo * CELL_WIDTH, 0, CELL_WIDTH, CANVAS_HEIGHT);
+  drawGrid(context);
 }
 function clearCanvas(context) {
   context.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
@@ -312,9 +332,7 @@ function drawRectangle(context, rectangle) {
   context.fill();
 }
 function drawImage(context, image) {
-  let imgElement = new Image();
-  imgElement.src = image.src;
-  context.drawImage(imgElement, image.x, image.y, image.w, image.h);
+  context.drawImage(image.srcImage, image.x, image.y, image.w, image.h);
 }
 function drawCircle(context, circle) {
   context.fillStyle = circle.color;

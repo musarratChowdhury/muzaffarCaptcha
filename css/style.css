@@ -3,6 +3,9 @@
   cursor: pointer;
   width: 1200px;
 }
+.hidden {
+  display: none;
+}
 .canvas-container {
   overflow: scroll;
   height: 400px;
